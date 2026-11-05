@@ -136,11 +136,11 @@
 
   /* ---------- screen ---------- */
   function m(n) { return money(n, false); }
-  function list(id, items, head, cells) {
+  function list(id, items, head, cells, act) {
     return '<section class="g1-sec" data-sec="' + id + '"><div class="g1-sh"><h3>' + esc(t('g2.s.' + id)) + ' <small class="soft">(' + items.length + ')</small></h3>' +
       (items.length ? '<button type="button" class="btn sm" data-csv="' + id + '">CSV</button>' : '') + '</div><p class="soft g2-help">' + esc(t('g2.h.' + id)) + '</p>' +
-      (items.length ? '<div class="g1-tw"><table class="g1-t"><thead><tr>' + head.map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('') + '</tr></thead><tbody>' +
-        items.map(function (x) { return '<tr>' + cells(x).map(function (c) { return '<td' + (typeof c === 'number' ? ' class="n"' : '') + '>' + esc(typeof c === 'number' ? m(c) : c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>' : '') + '</section>';
+      (items.length ? '<div class="g1-tw"><table class="g1-t"><thead><tr>' + head.map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('') + (act ? '<th class="gt-noprint"></th>' : '') + '</tr></thead><tbody>' +
+        items.map(function (x, i) { return '<tr>' + cells(x).map(function (c) { return '<td' + (typeof c === 'number' ? ' class="n"' : '') + '>' + esc(typeof c === 'number' ? m(c) : c) + '</td>'; }).join('') + (act ? '<td class="gt-noprint">' + act(x, i) + '</td>' : '') + '</tr>'; }).join('') + '</tbody></table></div>' : '') + '</section>';
   }
   var CSVS = {};
   function draw() {
@@ -159,10 +159,25 @@
       '<div class="g1-tiles"><div><span>' + esc(t('g2.k.2b')) + '</span><b>' + m(r.t2b) + '</b></div><div><span>' + esc(t('g2.k.books')) + '</span><b>' + m(r.tbooks) + '</b></div>' +
       '<div class="hi"><span>' + esc(t('g2.k.ok')) + '</span><b>' + m(r.tok) + '</b></div><div><span>' + esc(t('g2.k.n')) + '</span><b>' + r.ok.length + ' / ' + (r.ok.length + r.diff.length + r.numdiff.length + r.only2b.length) + '</b></div></div>' +
       (TWOB.gstin && SELLER() && SELLER().gstin && g15(SELLER().gstin) !== g15(TWOB.gstin) ? '<p class="callout">' + esc(t('g2.w.gstin', { a: TWOB.gstin, b: SELLER().gstin })) + '</p>' : '') +
-      list('diff', r.diff, PH.concat([t('g2.c.why')]), pair) + list('only2b', r.only2b, H, one) + list('onlybooks', r.onlybooks, H, one) + list('nofile', r.nofile, [t('g2.c.sup'), 'GSTIN', t('g2.c.bills'), t('g2.c.tax')], function (s) { return [s.name, s.gstin, String(s.n), s.tax]; }) +
+      list('diff', r.diff, PH.concat([t('g2.c.why')]), pair) + list('only2b', r.only2b, H, one, function (x, i) { return x.sec === 'impg' || x.sec === 'impgsez' || x.kind === 'dn' ? '' : '<button type="button" class="btn sm" data-add2b="' + i + '">' + esc(t('uf.add2b')) + '</button>'; }) + list('onlybooks', r.onlybooks, H, one) + list('nofile', r.nofile, [t('g2.c.sup'), 'GSTIN', t('g2.c.bills'), t('g2.c.tax')], function (s) { return [s.name, s.gstin, String(s.n), s.tax]; }) +
       list('numdiff', r.numdiff, PH, pair) + list('noitc', r.noitc, H.concat([t('g2.c.rsn')]), function (x) { return one(x).concat([x.rsn || '—']); }) + list('ok', r.ok, PH, pair);
     $('#g2-out').innerHTML = h;
     $('#g2-files').hidden = false;
+  }
+  /* a bill found only in GSTR-2B: save it as a purchase bill (unpaid) in the data home, one line at the bill's tax rate */
+  var RATES = [0, 0.1, 0.25, 1.5, 3, 5, 12, 18, 28, 40];
+  function addBill(x, btn) {
+    var s = SELLER(); if (!x || !s || !s.name) { NS.toast(t('g3.nobiz'), 'bad'); return; }
+    var txv = Math.abs(x.txv), g = txv ? (Math.abs(x.igst) + Math.abs(x.cgst) + Math.abs(x.sgst)) / txv * 100 : 0;
+    var near = RATES.reduce(function (a, r) { return Math.abs(r - g) < Math.abs(a - g) ? r : a; }, 18);
+    if (!confirm(t('uf.add2bq', { no: x.no, p: x.name || x.gstin }))) return;
+    var sel = JSON.parse(JSON.stringify(s)); delete sel.id; delete sel.created; delete sel.updated;
+    var d = { type: 'pbill', kind: x.kind === 'cn' ? 'return' : 'bill', app: 1, from2b: 1, seller: sel, buyer: { name: x.name || x.gstin, gstin: x.gstin, state: x.gstin.slice(0, 2) }, no: x.no, date: x.date || NS.today(), round: false, noGst: false,
+      items: [{ desc: 'Purchase as per GSTR-2B', hsn: '', qty: 1, unit: 'Nos', rate: txv, gst: Math.abs(near - g) <= 0.1 ? near : r2(g) }] };
+    if (d.kind === 'return') d.orig = { no: '' }; else d.due = '';
+    var tt = B.itemTotals(d); d.tax = { taxable: tt.taxable, cgst: tt.cgst, sgst: tt.sgst, igst: tt.igst }; d.total = r2(tt.taxable + tt.cgst + tt.sgst + tt.igst);
+    btn.disabled = true;
+    NSStore.put('doc', d).then(function (rec) { DOCS.push(rec); NS.toast(t('uf.add2bok', { no: x.no })); draw(); }, function (err) { btn.disabled = false; NS.toast(err.message, 'bad'); });
   }
   function SELLER() { var bz = $('#g2-biz').value; return BIZ.filter(function (b) { return key(b.name) === bz; })[0] || (DOCS.filter(function (d) { return key(d.seller && d.seller.name) === bz; })[0] || {}).seller; }
   function save(blob, name) { var a = document.createElement('a'), u = URL.createObjectURL(blob); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(u); }, 4000); }
@@ -230,6 +245,7 @@
     root.addEventListener('click', function (e) {
       var b = e.target.closest('button'); if (!b) return;
       if (b.dataset.csv) csv(b.dataset.csv);
+      else if (b.dataset.add2b && R) addBill(R.only2b[+b.dataset.add2b], b);
       else if (b.dataset.do === 'reg') register();
       else if (b.dataset.do === 'print') window.print();
       else if (b.dataset.do === 'share' && R) NS.sharePdf([$('#g2-out')], 'GSTR-2B match ' + (TWOB.period || ''), 'a4', 'GSTR-2B match', 'GSTR-2B match');
