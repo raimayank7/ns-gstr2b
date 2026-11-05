@@ -210,6 +210,7 @@
     }).catch(function () { st.textContent = t('g2.bad'); });
   }
   function start() {
+    document.addEventListener('ns-lang', function () { $('#g2-status').textContent = t('g2.loaded', { n: DOCS.filter(function (d) { return d.type === 'pbill'; }).length }); draw(); });   /* the language pack can arrive after the first drawing */
     NSStore.ready().then(function () { return Promise.all([NSStore.list('doc'), NSStore.list('biz')]); }).then(function (x) {
       DOCS = x[0] || []; BIZ = x[1] || [];
       var seen = {}, bl = [];

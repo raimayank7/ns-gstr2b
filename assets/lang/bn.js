@@ -2210,3 +2210,8 @@ NS.addLang("bn", {
   "pl.l_earlierp": "আগের সময়ের প্রফিট",
   "pl.l_earlierl": "আগের সময়ের লস"
 });
+/* links to the Nivesh Sahayak App */
+NS.addLang("bn", {
+  "nav.app": "Nivesh Sahayak অ্যাপ",
+  "hub.app": "বকেয়া, পাওয়া আর দেওয়া টাকা, কেনা, খরচ আর পার্টি স্টেটমেন্ট, সব এক জায়গায়"
+});

@@ -2079,3 +2079,8 @@ NS.addLang("mni", {
   "pl.l_earlierp": "ꯃꯃꯥꯡꯒꯤ ꯃꯇꯃꯒꯤ ꯀꯥꯟꯅꯕ",
   "pl.l_earlierl": "ꯃꯃꯥꯡꯒꯤ ꯃꯇꯃꯒꯤ ꯃꯥꯡꯕ"
 });
+/* links to the Nivesh Sahayak App */
+NS.addLang("mni", {
+  "nav.app": "Nivesh Sahayak ꯑꯦꯞ",
+  "hub.app": "ꯂꯦꯃꯍꯧꯔꯤꯕ, ꯐꯪꯈꯤꯕ ꯑꯃꯁꯨꯡ ꯄꯤꯈꯤꯕ ꯁꯦꯟ, ꯂꯧꯕ, ꯁꯦꯟꯊꯣꯛ ꯑꯃꯁꯨꯡ ꯄꯥꯔꯇꯤ ꯁ꯭ꯇꯦꯇꯃꯦꯟꯠ ꯄꯨꯝꯅꯃꯛ ꯃꯐꯝ ꯑꯃꯗ"
+});

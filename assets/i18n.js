@@ -780,7 +780,9 @@
     'pl.l_sales': 'Sales', 'pl.l_sret': 'Sales returns', 'pl.l_pur': 'Purchases', 'pl.l_pret': 'Purchase returns', 'pl.l_round': 'Round off', 'pl.l_cash': 'Cash in hand', 'pl.l_bank': 'Bank',
     'pl.l_chqin': 'Cheques in hand', 'pl.l_chqout': 'Cheques issued, not yet cleared', 'pl.l_tdsr': 'TDS receivable', 'pl.l_tdsp': 'TDS payable', 'pl.l_opening': 'Opening balances of parties',
     'pl.l_osk': 'Opening stock', 'pl.l_capstock': 'Stock brought in (opening stock records)', 'pl.l_trec': 'Customers who owe you ({n})', 'pl.l_tpay': 'Suppliers you owe ({n})',
-    'pl.l_gstin': 'GST input credit (net)', 'pl.l_gstout': 'GST payable (net)', 'pl.l_earlierp': 'Profit of earlier periods', 'pl.l_earlierl': 'Loss of earlier periods'
+    'pl.l_gstin': 'GST input credit (net)', 'pl.l_gstout': 'GST payable (net)', 'pl.l_earlierp': 'Profit of earlier periods', 'pl.l_earlierl': 'Loss of earlier periods',
+    /* links to the Nivesh Sahayak App from every site */
+    'nav.app': 'Nivesh Sahayak App', 'hub.app': 'Dues, money received and paid, purchases, expenses and party statements in one place'
   };
 
   var packs = { en: EN }, cur = 'en';

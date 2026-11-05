@@ -2210,3 +2210,8 @@ NS.addLang("brx", {
   "pl.l_earlierp": "सिगांनि समनि मुनाफा",
   "pl.l_earlierl": "सिगांनि समनि खहा"
 });
+/* links to the Nivesh Sahayak App */
+NS.addLang("brx", {
+  "nav.app": "Nivesh Sahayak एप",
+  "hub.app": "बाकि, मोननाय आरो होनाय रां, बायनाय, खरच आरो पार्टि स्टेटमेन्ट, गासैबो मोनसे जायगायाव"
+});

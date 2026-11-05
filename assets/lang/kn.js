@@ -2210,3 +2210,8 @@ NS.addLang("kn", {
   "pl.l_earlierp": "ಹಿಂದಿನ ಅವಧಿಗಳ ಲಾಭ",
   "pl.l_earlierl": "ಹಿಂದಿನ ಅವಧಿಗಳ ನಷ್ಟ"
 });
+/* links to the Nivesh Sahayak App */
+NS.addLang("kn", {
+  "nav.app": "Nivesh Sahayak ಆಪ್",
+  "hub.app": "ಬಾಕಿ, ಬಂದ ಮತ್ತು ಕೊಟ್ಟ ಹಣ, ಖರೀದಿ, ಖರ್ಚು ಮತ್ತು ಪಾರ್ಟಿ ಸ್ಟೇಟ್‌ಮೆಂಟ್ ಎಲ್ಲವೂ ಒಂದೇ ಕಡೆ"
+});

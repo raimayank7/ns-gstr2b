@@ -2210,3 +2210,8 @@ NS.addLang("as", {
   "pl.l_earlierp": "আগৰ সময়ৰ প্ৰফিট",
   "pl.l_earlierl": "আগৰ সময়ৰ লছ"
 });
+/* links to the Nivesh Sahayak App */
+NS.addLang("as", {
+  "nav.app": "Nivesh Sahayak এপ",
+  "hub.app": "বাকী, পোৱা আৰু দিয়া টকা, কিনা, খৰচ আৰু পাৰ্টী ষ্টেটমেণ্ট, সকলো এঠাইত"
+});

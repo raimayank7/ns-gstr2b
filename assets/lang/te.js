@@ -2213,3 +2213,8 @@ NS.addLang("te", {
   "pl.l_earlierp": "గత కాలాల లాభం",
   "pl.l_earlierl": "గత కాలాల నష్టం"
 });
+/* links to the Nivesh Sahayak App */
+NS.addLang("te", {
+  "nav.app": "Nivesh Sahayak యాప్",
+  "hub.app": "బాకీలు, వచ్చిన మరియు ఇచ్చిన డబ్బు, కొనుగోళ్లు, ఖర్చులు, పార్టీ స్టేట్‌మెంట్ అన్నీ ఒకే చోట"
+});

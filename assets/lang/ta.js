@@ -2213,3 +2213,8 @@ NS.addLang("ta", {
   "pl.l_earlierp": "முந்தைய காலங்களின் லாபம்",
   "pl.l_earlierl": "முந்தைய காலங்களின் நஷ்டம்"
 });
+/* links to the Nivesh Sahayak App */
+NS.addLang("ta", {
+  "nav.app": "Nivesh Sahayak ஆப்",
+  "hub.app": "நிலுவை, வந்த மற்றும் கொடுத்த பணம், வாங்குதல், செலவுகள், பார்ட்டி ஸ்டேட்மென்ட் எல்லாம் ஒரே இடத்தில்"
+});

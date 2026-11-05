@@ -2211,3 +2211,8 @@ NS.addLang("ks", {
   "pl.l_earlierp": "پَتِمِس مدتُک پرافٹ",
   "pl.l_earlierl": "پَتِمِس مدتُک لاس"
 });
+/* links to the Nivesh Sahayak App */
+NS.addLang("ks", {
+  "nav.app": "Nivesh Sahayak ایپ",
+  "hub.app": "بقایا، مِلمٕتۍ تہٕ دِژمٕتۍ پونسہٕ، خریداری، خرچ تہٕ پارٹی اسٹیٹمنٹ، سورُے اَکِس جاے"
+});

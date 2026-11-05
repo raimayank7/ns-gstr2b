@@ -2211,3 +2211,8 @@ NS.addLang("ur", {
   "pl.l_earlierp": "پچھلی مدت کا پرافٹ",
   "pl.l_earlierl": "پچھلی مدت کا لاس"
 });
+/* links to the Nivesh Sahayak App */
+NS.addLang("ur", {
+  "nav.app": "Nivesh Sahayak ایپ",
+  "hub.app": "بقایا، ملا اور دیا پیسہ، خریداری، خرچے اور پارٹی اسٹیٹمنٹ، سب ایک جگہ"
+});

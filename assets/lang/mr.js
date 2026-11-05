@@ -2210,3 +2210,8 @@ NS.addLang("mr", {
   "pl.l_earlierp": "मागील कालावधीचा प्रॉफिट",
   "pl.l_earlierl": "मागील कालावधीचा लॉस"
 });
+/* links to the Nivesh Sahayak App */
+NS.addLang("mr", {
+  "nav.app": "Nivesh Sahayak ॲप",
+  "hub.app": "थकबाकी, मिळालेले आणि दिलेले पैसे, खरेदी, खर्च आणि पार्टी स्टेटमेंट, सगळे एका ठिकाणी"
+});

@@ -2210,3 +2210,8 @@ NS.addLang("sd", {
   "pl.l_earlierp": "اڳين مدت جو پرافٽ",
   "pl.l_earlierl": "اڳين مدت جو لاس"
 });
+/* links to the Nivesh Sahayak App */
+NS.addLang("sd", {
+  "nav.app": "Nivesh Sahayak ايپ",
+  "hub.app": "بقايا، مليل ۽ ڏنل پئسا، خريداري، خرچ ۽ پارٽي اسٽيٽمينٽ، سڀ هڪ هنڌ"
+});

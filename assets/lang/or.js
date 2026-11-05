@@ -2078,3 +2078,8 @@ NS.addLang("or", {
   "pl.l_earlierp": "ପୂର୍ବ ସମୟର ପ୍ରଫିଟ୍",
   "pl.l_earlierl": "ପୂର୍ବ ସମୟର ଲସ୍"
 });
+/* links to the Nivesh Sahayak App */
+NS.addLang("or", {
+  "nav.app": "Nivesh Sahayak ଆପ",
+  "hub.app": "ବାକି, ମିଳିଥିବା ଓ ଦେଇଥିବା ଟଙ୍କା, କିଣା, ଖର୍ଚ୍ଚ ଓ ପାର୍ଟି ଷ୍ଟେଟମେଣ୍ଟ, ସବୁ ଗୋଟିଏ ଜାଗାରେ"
+});

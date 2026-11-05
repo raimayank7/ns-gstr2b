@@ -2210,3 +2210,8 @@ NS.addLang("ml", {
   "pl.l_earlierp": "മുൻ കാലയളവുകളിലെ ലാഭം",
   "pl.l_earlierl": "മുൻ കാലയളവുകളിലെ നഷ്ടം"
 });
+/* links to the Nivesh Sahayak App */
+NS.addLang("ml", {
+  "nav.app": "Nivesh Sahayak ആപ്പ്",
+  "hub.app": "കുടിശ്ശിക, കിട്ടിയതും കൊടുത്തതുമായ പണം, വാങ്ങൽ, ചെലവുകൾ, പാർട്ടി സ്റ്റേറ്റ്‌മെന്റ് എല്ലാം ഒരിടത്ത്"
+});

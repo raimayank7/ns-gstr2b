@@ -2210,3 +2210,8 @@ NS.addLang("kok", {
   "pl.l_earlierp": "फाटल्या काळाचो प्रॉफिट",
   "pl.l_earlierl": "फाटल्या काळाचो लॉस"
 });
+/* links to the Nivesh Sahayak App */
+NS.addLang("kok", {
+  "nav.app": "Nivesh Sahayak ॲप",
+  "hub.app": "येणें-देणें, मेळिल्ले आनी दिल्ले पयशे, खरेदी, खर्च आनी पार्टी स्टेटमेंट, सगळें एके सुवातेर"
+});

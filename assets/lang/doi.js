@@ -2211,3 +2211,8 @@ NS.addLang("doi", {
   "pl.l_earlierp": "पिछले समें दा प्रॉफिट",
   "pl.l_earlierl": "पिछले समें दा लॉस"
 });
+/* links to the Nivesh Sahayak App */
+NS.addLang("doi", {
+  "nav.app": "Nivesh Sahayak ऐप",
+  "hub.app": "बकाया, मिलेआ ते दित्ता पैसा, खरीद, खर्चे ते पार्टी स्टेटमेंट, सब इक जगह"
+});

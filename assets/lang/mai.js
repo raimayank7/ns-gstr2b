@@ -2210,3 +2210,8 @@ NS.addLang("mai", {
   "pl.l_earlierp": "पछिला अवधिक प्रॉफिट",
   "pl.l_earlierl": "पछिला अवधिक लॉस"
 });
+/* links to the Nivesh Sahayak App */
+NS.addLang("mai", {
+  "nav.app": "Nivesh Sahayak ऐप",
+  "hub.app": "बकाया, भेटल आ देल पाइ, खरीद, खर्चा आ पार्टी स्टेटमेंट, सभ एक ठाम"
+});

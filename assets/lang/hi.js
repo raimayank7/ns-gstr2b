@@ -2210,3 +2210,8 @@ NS.addLang("hi", {
   "pl.l_earlierp": "पिछली अवधि का प्रॉफिट",
   "pl.l_earlierl": "पिछली अवधि का लॉस"
 });
+/* links to the Nivesh Sahayak App */
+NS.addLang("hi", {
+  "nav.app": "Nivesh Sahayak ऐप",
+  "hub.app": "बकाया, मिला और दिया पैसा, खरीद, खर्चे और पार्टी स्टेटमेंट, सब एक जगह"
+});

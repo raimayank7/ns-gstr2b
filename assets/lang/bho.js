@@ -2210,3 +2210,8 @@ NS.addLang("bho", {
   "pl.l_earlierp": "पिछला समय के प्रॉफिट",
   "pl.l_earlierl": "पिछला समय के लॉस"
 });
+/* links to the Nivesh Sahayak App */
+NS.addLang("bho", {
+  "nav.app": "Nivesh Sahayak ऐप",
+  "hub.app": "बकाया, मिलल आ दिहल पइसा, खरीद, खरचा आ पार्टी स्टेटमेंट, सब एक जगह"
+});

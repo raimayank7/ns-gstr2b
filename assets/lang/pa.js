@@ -2211,3 +2211,8 @@ NS.addLang("pa", {
   "pl.l_earlierp": "ਪਿਛਲੇ ਸਮੇਂ ਦਾ ਪ੍ਰੌਫਿਟ",
   "pl.l_earlierl": "ਪਿਛਲੇ ਸਮੇਂ ਦਾ ਲੌਸ"
 });
+/* links to the Nivesh Sahayak App */
+NS.addLang("pa", {
+  "nav.app": "Nivesh Sahayak ਐਪ",
+  "hub.app": "ਬਕਾਇਆ, ਮਿਲਿਆ ਤੇ ਦਿੱਤਾ ਪੈਸਾ, ਖਰੀਦ, ਖਰਚੇ ਅਤੇ ਪਾਰਟੀ ਸਟੇਟਮੈਂਟ, ਸਭ ਇੱਕ ਥਾਂ"
+});

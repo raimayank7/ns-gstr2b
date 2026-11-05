@@ -2210,3 +2210,8 @@ NS.addLang("sa", {
   "pl.l_earlierp": "पूर्वकालस्य प्रॉफिट",
   "pl.l_earlierl": "पूर्वकालस्य लॉस"
 });
+/* links to the Nivesh Sahayak App */
+NS.addLang("sa", {
+  "nav.app": "Nivesh Sahayak ऐप",
+  "hub.app": "शेषदेयं, प्राप्तं दत्तं च धनं, क्रयः, व्ययाः, पक्ष-स्टेटमेंट च, सर्वम् एकत्र"
+});
