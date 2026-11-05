@@ -97,10 +97,10 @@
   /* ---------- our purchase bills ---------- */
   function books() {
     var bz = $('#g2-biz').value;
-    return DOCS.filter(function (d) { return d.type === 'pbill' && key(d.seller && d.seller.name) === bz; }).map(function (d) {
-      var tt = B.itemTotals(d), s = d.kind === 'return' ? -1 : 1;
-      return { id: d.id, gstin: g15(d.buyer && d.buyer.gstin), name: d.buyer && d.buyer.name || '', kind: d.kind === 'return' ? 'cn' : 'inv', no: d.no || '', date: d.date || '', value: s * tt.total,
-        txv: s * tt.taxable, igst: s * tt.igst, cgst: s * tt.cgst, sgst: s * tt.sgst, cess: 0, noGst: !!d.noGst };
+    return DOCS.filter(function (d) { return (d.type === 'pbill' || d.type === 'note' && d.side === 'purchase') && key(d.seller && d.seller.name) === bz; }).map(function (d) {
+      var pn = d.type === 'note', back = pn ? d.kind === 'debit' : d.kind === 'return', tt = B.itemTotals(d), s = back ? -1 : 1;
+      return { id: d.id, gstin: g15(d.buyer && d.buyer.gstin), name: d.buyer && d.buyer.name || '', kind: back ? 'cn' : pn ? 'dn' : 'inv', no: d.no || '', date: d.date || '', value: s * tt.total,
+        txv: s * tt.taxable, igst: s * tt.igst, cgst: s * tt.cgst, sgst: s * tt.sgst, cess: 0, noGst: pn ? d.withGst === false : !!d.noGst };
     }).filter(function (b) { return !b.noGst; });
   }
   function tax(x) { return r2(Math.abs(x.igst) + Math.abs(x.cgst) + Math.abs(x.sgst) + Math.abs(x.cess)); }
