@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://gstr2b.niveshsahayak.in/sitemap.xml
