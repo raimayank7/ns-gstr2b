@@ -104,6 +104,7 @@
     }).filter(function (b) { return !b.noGst; });
   }
   function tax(x) { return r2(Math.abs(x.igst) + Math.abs(x.cgst) + Math.abs(x.sgst) + Math.abs(x.cess)); }
+  function stax(x) { return x.kind === 'cn' ? -tax(x) : tax(x); }   /* a supplier credit note takes ITC away (F3-7) */
   function inRange(d) { var f = $('#g2-from').value, to = $('#g2-to').value; return (!f || d >= f) && (!to || d <= to); }
 
   function match() {
@@ -111,7 +112,7 @@
     var used = {}, res = { ok: [], diff: [], numdiff: [], only2b: [], onlybooks: [], noitc: [], nofile: [], t2b: 0, tbooks: 0, tok: 0 };
     var idx = {}; mine.forEach(function (b, i) { var k = b.gstin + '|' + b.kind + '|' + nkey(b.no); (idx[k] = idx[k] || []).push(i); });
     two.forEach(function (x) {
-      res.t2b += x.itc ? tax(x) : 0;
+      res.t2b += x.itc ? stax(x) : 0;
       if (!x.itc) res.noitc.push(x);
       var k = x.gstin + '|' + x.kind + '|' + nkey(x.no), hit = (idx[k] || []).filter(function (i) { return !used[i]; })[0];
       if (hit == null) {   /* same supplier, same tax, different number */
@@ -121,10 +122,10 @@
       }
       used[hit] = 1;
       var b = mine[hit], dt = Math.abs(Math.abs(b.txv) - Math.abs(x.txv)), dx = Math.abs(tax(b) - tax(x));
-      if (dt <= tol && dx <= tol && Math.abs(Math.abs(b.igst) - Math.abs(x.igst)) <= tol && (b.date === x.date || !x.date)) { res.ok.push({ b: b, x: x }); res.tok += x.itc ? tax(x) : 0; }
+      if (dt <= tol && dx <= tol && Math.abs(Math.abs(b.igst) - Math.abs(x.igst)) <= tol && (b.date === x.date || !x.date)) { res.ok.push({ b: b, x: x }); res.tok += x.itc ? stax(x) : 0; }
       else res.diff.push({ b: b, x: x, why: [dt > tol || dx > tol ? t('g2.why.amt') : '', Math.abs(Math.abs(b.igst) - Math.abs(x.igst)) > tol && dx <= tol ? t('g2.why.head') : '', b.date !== x.date && x.date ? t('g2.why.date') : ''].filter(Boolean).join(', ') });
     });
-    mine.forEach(function (b, i) { if (!used[i] && inRange(b.date)) { res.onlybooks.push(b); } if (inRange(b.date)) res.tbooks += tax(b); });
+    mine.forEach(function (b, i) { if (!used[i] && inRange(b.date)) { res.onlybooks.push(b); } if (inRange(b.date)) res.tbooks += stax(b); });
     /* suppliers in our books for the period with nothing at all in 2B */
     var in2b = {}; two.forEach(function (x) { in2b[x.gstin] = 1; });
     var sup = {};
