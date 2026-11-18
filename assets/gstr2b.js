@@ -1,5 +1,5 @@
 /* GSTR-2B matcher (gstr2b.niveshsahayak.in): the user opens the GSTR-2B JSON or Excel downloaded from the GST portal; it stays in
-   the browser and is compared with the purchase bills saved in the data home (Nivesh Sahayak App purchase bills and returns).
+   the browser and is compared with the purchase bills saved in the data home (NSBiz purchase bills and returns).
    Result: matched, amount or date differs, number differs (same supplier and amount), in 2B but not in your books, in your books
    but not in 2B, ITC not available in 2B, and suppliers with nothing in 2B. The 2B file is read by field names, not fixed positions,
    so small format changes on the portal do not break it. Purchase register download in the layout of the portal's Matching Offline
