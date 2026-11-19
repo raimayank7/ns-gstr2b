@@ -97,7 +97,7 @@
   /* ---------- our purchase bills ---------- */
   function books() {
     var bz = $('#g2-biz').value;
-    return DOCS.filter(function (d) { return (d.type === 'pbill' || d.type === 'note' && d.side === 'purchase') && key(d.seller && d.seller.name) === bz; }).map(function (d) {
+    return DOCS.filter(function (d) { return (d.type === 'pbill' || d.type === 'note' && d.side === 'purchase') && key(d.seller && d.seller.name) === bz && !d.cancelled; }).map(function (d) {
       var pn = d.type === 'note', back = pn ? d.kind === 'debit' : d.kind === 'return', tt = B.itemTotals(d), s = back ? -1 : 1;
       return { id: d.id, gstin: g15(d.buyer && d.buyer.gstin), name: d.buyer && d.buyer.name || '', kind: back ? 'cn' : pn ? 'dn' : 'inv', no: d.no || '', date: d.date || '', value: s * tt.total,
         txv: s * tt.taxable, igst: s * tt.igst, cgst: s * tt.cgst, sgst: s * tt.sgst, cess: 0, noGst: pn ? d.withGst === false : !!d.noGst };
@@ -164,6 +164,23 @@
       list('numdiff', r.numdiff, PH, pair) + list('noitc', r.noitc, H.concat([t('g2.c.rsn')]), function (x) { return one(x).concat([x.rsn || '—']); }) + list('ok', r.ok, PH, pair);
     $('#g2-out').innerHTML = h;
     $('#g2-files').hidden = false;
+    keep(r);
+  }
+  /* S-6 (ERP round 1, r1-gst): the match is kept for GSTR-3B in data home meta 'gstr2b' '<business key>|<YYYY-MM of the 2B period>' =
+     { at, ok: [ids of bills and notes shown in 2B with ITC available], noitc: [ids shown with ITC not available], impg: { igst, cess } of
+     import of goods (4(A)(1)) }. GSTR-3B then takes ITC of the bills this 2B shows, whatever their date (rule 36(4), s.16(2)(aa)).
+     Kept again whenever the result changes; a bill matched in two months counts in the first. */
+  var KEPT = '';
+  function keep(r) {
+    var p = String(TWOB && TWOB.period || ''), mm = p.match(/^(\d{2})(\d{4})$/), bz = $('#g2-biz').value; if (!mm || !bz) return;
+    var ok = [], no = [], im = { igst: 0, cess: 0 };
+    r.ok.concat(r.diff, r.numdiff).forEach(function (q) { if (q.b && q.b.id) (q.x.itc ? ok : no).push(q.b.id); });
+    TWOB.rows.forEach(function (x) { if ((x.sec === 'impg' || x.sec === 'impgsez') && x.itc) { im.igst = r2(im.igst + num(x.igst)); im.cess = r2(im.cess + num(x.cess)); } });
+    var k = bz + '|' + mm[2] + '-' + mm[1], rec = { ok: ok.sort(), noitc: no.sort(), impg: im }, sig = k + JSON.stringify(rec);
+    if (sig === KEPT) return; KEPT = sig;
+    NSStore.meta('gstr2b').then(function (M) { M = M || {}; M[k] = Object.assign({ at: Date.now() }, rec); return NSStore.meta('gstr2b', M); })
+      .then(function () { var st = $('#g2-kept'); if (!st) { st = document.createElement('p'); st.id = 'g2-kept'; st.className = 'soft'; $('#g2-out').insertAdjacentElement('beforebegin', st); } st.textContent = t('g2.kept', { n: ok.length, p: mm[1] + '/' + mm[2] }); })
+      .catch(function () {});
   }
   /* a bill found only in GSTR-2B: save it as a purchase bill (unpaid) in the data home, one line at the bill's tax rate */
   var RATES = [0, 0.1, 0.25, 1.5, 3, 5, 12, 18, 28, 40];
@@ -171,7 +188,7 @@
     var s = SELLER(); if (!x || !s || !s.name) { NS.toast(t('g3.nobiz'), 'bad'); return; }
     var txv = Math.abs(x.txv), g = txv ? (Math.abs(x.igst) + Math.abs(x.cgst) + Math.abs(x.sgst)) / txv * 100 : 0;
     var near = RATES.reduce(function (a, r) { return Math.abs(r - g) < Math.abs(a - g) ? r : a; }, 18);
-    if (!confirm(t('uf.add2bq', { no: x.no, p: x.name || x.gstin }))) return;
+    if (!NS.okSync(t('uf.add2bq', { no: x.no, p: x.name || x.gstin }))) return;
     var sel = JSON.parse(JSON.stringify(s)); delete sel.id; delete sel.created; delete sel.updated;
     var d = { type: 'pbill', kind: x.kind === 'cn' ? 'return' : 'bill', app: 1, from2b: 1, seller: sel, buyer: { name: x.name || x.gstin, gstin: x.gstin, state: x.gstin.slice(0, 2) }, no: x.no, date: x.date || NS.today(), round: false, noGst: false,
       items: [{ desc: 'Purchase as per GSTR-2B', hsn: '', qty: 1, unit: 'Nos', rate: txv, gst: Math.abs(near - g) <= 0.1 ? near : r2(g) }] };
