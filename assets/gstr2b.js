@@ -258,6 +258,116 @@
     }).then(function (buf) { save(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'Purchase register ' + (s.gstin || '') + ' ' + MONF[mo - 1] + ' ' + y + '.xlsx'); })
       .catch(function () { NS.toast(t('g1.xfail'), 'bad'); });
   }
+  /* the department's "GSTR2 Excel Workbook Template" (inside the Returns Offline Tool): the purchase side laid out the way the
+     Offline Tool imports it. One row per GST rate of each bill; registered suppliers in b2b, unregistered in b2bur, notes in
+     cdnr, HSN summary in hsnsum. ITC eligibility from the bill or line (blocked / ineligible -> Ineligible, SAC 99 -> Input services). */
+  /* units as the GST unit codes (same table as the GSTR-1 screen) */
+  var UQC = { nos: 'NOS-NUMBERS', pcs: 'PCS-PIECES', kg: 'KGS-KILOGRAMS', gm: 'GMS-GRAMMES', ltr: 'LTR-LITRES', ml: 'MLT-MILILITRE', mtr: 'MTR-METERS', 'sq ft': 'SQF-SQUARE FEET',
+    box: 'BOX-BOX', pack: 'PAC-PACKS', set: 'SET-SETS', pair: 'PRS-PAIRS', dozen: 'DOZ-DOZENS', bag: 'BAG-BAGS', ton: 'TON-TONNES', bottle: 'BTL-BOTTLES', roll: 'ROL-ROLLS', 'sq m': 'SQM-SQUARE METERS', quintal: 'QTL-QUINTAL', unit: 'UNT-UNITS' };
+  var NREASON = { ret: '01-Sales Return', disc: '02-Post Sale Discount', price: '04-Correction in Invoice', tax: '04-Correction in Invoice', short: '07-Others', other: '07-Others' };
+  function g2Rows(docs, me) {
+    var r2 = function (n) { return Math.round((+n || 0) * 100) / 100; }, ms = String(me && (me.state || String(me.gstin || '').slice(0, 2)) || '');
+    var out = { b2b: [], b2bur: [], cdnr: [], hsn: {} }, LINES = function (d) { return (d.items || []).concat(B.chargeLines ? B.chargeLines(d) : []); };
+    var elig = function (d, it) { var v = it && it.itc || typeof d.itc === 'string' && d.itc || 'ok'; return /^(blocked|ineligible)$/.test(v) || d.itc === false ? 'Ineligible' : /^99/.test(String(it && it.hsn || '')) ? 'Input services' : 'Inputs'; };
+    docs.forEach(function (d) {
+      var sup = d.buyer || {}, gst = g15(sup.gstin), ss = String(sup.state || gst.slice(0, 2) || ms), inter = !!ss && !!ms && ss !== ms;
+      var tt = B.itemTotals(d), val = r2(tt.total), rates = {};
+      LINES(d).forEach(function (it) {
+        var q = num(it.qty), rt = num(it.rate); if (!it.desc && !rt) return;
+        var gross = q * rt, txv = r2(gross - gross * num(it.disc) / 100), g = d.noGst ? 0 : num(it.gst), e = elig(d, it), k = g + '|' + e, b = rates[k] || (rates[k] = { g: g, e: e, txv: 0, tax: 0 });
+        b.txv = r2(b.txv + txv); b.tax = r2(b.tax + txv * g / 100);
+        if (it.hsn) { var h = String(it.hsn).trim(), uq = /^99/.test(h) ? 'NA' : UQC[key(it.unit)] || 'OTH-OTHERS', hk = h + '|' + uq, x = out.hsn[hk] || (out.hsn[hk] = { hsn: h, desc: it.desc || '', uqc: uq, qty: 0, val: 0, txv: 0, igst: 0, cgst: 0, sgst: 0 });
+          var hx = r2(txv * g / 100); x.qty = r2(x.qty + q); x.txv = r2(x.txv + txv); x.val = r2(x.val + txv + hx); if (inter) x.igst = r2(x.igst + hx); else { x.cgst = r2(x.cgst + hx / 2); x.sgst = r2(x.sgst + hx / 2); } }
+      });
+      var pos = ms, note = d.type === 'note', rc = d.rc || d.rcm ? 'Y' : 'N';
+      Object.keys(rates).forEach(function (k) {
+        var b = rates[k], ig = inter ? b.tax : 0, cg = inter ? 0 : r2(b.tax / 2), sg = inter ? 0 : r2(b.tax - r2(b.tax / 2)), av = b.e === 'Ineligible' ? [0, 0, 0, 0] : [ig, cg, sg, 0];
+        var tax = [b.g, b.txv, ig, cg, sg, 0, b.e].concat(av);
+        if (note) out.cdnr.push([gst, d.no || '', d.date, d.orig && d.orig.no || '', d.orig && d.orig.date || '', 'N', d.kind === 'debit' ? 'C' : 'D', NREASON[d.reason] || '07-Others', inter ? 'Inter State' : 'Intra State', val].concat(tax));
+        else if (gst.length === 15) out.b2b.push([gst, d.no || '', d.date, val, pos, rc, 'Regular'].concat(tax));
+        else out.b2bur.push([sup.name || '', d.no || '', d.date, val, pos, inter ? 'Inter State' : 'Intra State'].concat(tax));
+      });
+    });
+    out.hsnsum = Object.keys(out.hsn).map(function (k) { var x = out.hsn[k]; return [x.hsn, x.desc, x.uqc, x.qty, x.val, x.txv, x.igst, x.cgst, x.sgst, 0]; });
+    return out;
+  }
+  function fillG2(book, docs, me) {
+    var X = NS.xlFill, need = ['b2b', 'b2bur', 'cdnr', 'hsnsum', 'imps', 'impg', 'cdnur', 'at', 'atadj', 'itcr'];
+    if (need.some(function (n) { return book.sheets.indexOf(n) < 0; })) throw new Error('notg2');
+    var o = g2Rows(docs, me);
+    return book.sheet('master').then(function (M) { return M.listUnder('POS'); }, function () { return []; }).then(function (POS) {
+      var fix = function (L, dateCols, posCol) { return L.map(function (r) { return r.map(function (v, j) { return dateCols.indexOf(j) >= 0 ? X.serial(v) : j === posCol ? X.posFrom(POS, v && String(v).length === 2 ? v + '-' : v) : v; }); }); };
+      var put = { b2b: fix(o.b2b, [2], 4), b2bur: fix(o.b2bur, [2], 4), cdnr: fix(o.cdnr, [2, 4], -1), hsnsum: o.hsnsum, imps: [], impg: [], cdnur: [], at: [], atadj: [], itcr: [] };
+      return Object.keys(put).reduce(function (p, n) { return p.then(function () { return book.sheet(n); }).then(function (S) { S.putRows(5, put[n]); }); }, Promise.resolve()).then(function () { return o; });
+    });
+  }
+  function showTpl() { var e = $('[data-tpl="gstr2"]'); if (e && NS.xlFill) NS.xlFill.info('gstr2').then(function (k) { e.textContent = k ? ' Using ' + k.name : ''; }); }
+  function fillG2Tpl(own) {
+    if (!NS.xlFill) return;
+    var me = SELLER() || {}, bz = $('#g2-biz').value, f0 = $('#g2-from').value, t0 = $('#g2-to').value;
+    var docs = DOCS.filter(function (d) { return (d.type === 'pbill' || d.type === 'note' && d.side === 'purchase') && key(d.seller && d.seller.name) === bz && !d.cancelled && !d.deleted && inRange(d.date || ''); });
+    if (!docs.length) { NS.toast('No purchase bills in the chosen dates.'); return; }
+    var tp = null;
+    NS.xlFill.template('gstr2', own).then(function (x) {
+      tp = x; if (!tp) return; var f = tp.file;
+      NS.toast('Filling ' + f.name + '…');
+      return NS.xlFill.open(f).then(function (book) { return fillG2(book, docs, me).then(function (o) { NS.xlFill.good('gstr2', tp);
+        var nm = 'GSTR2_' + (g15(me.gstin) || 'GSTIN') + '_' + (f0 || '') + (t0 && t0 !== f0 ? '_' + t0 : '') + ' NSBiz.xlsx';
+        return book.save(nm).then(function (bl) { return NS.xlFill.toFolder(g15(me.gstin), 'GSTR-2 ' + (f0 || '') + (t0 && t0 !== f0 ? ' to ' + t0 : ''), nm, bl); }).then(function (inF) { NS.toast('Saved as "' + nm + '" (' + (o.b2b.length + o.b2bur.length + o.cdnr.length) + ' rows).' + (inF ? ' Also saved in NSBiz › GST Returns.' : '')); showTpl(); });
+      }); });
+    }).catch(function (e) {
+      var w = e && e.message; if (/^(notg2|notxl)$/.test(w)) NS.xlFill.bad('gstr2', tp);
+      NS.toast(w === 'notzip' ? 'Choose the zip downloaded from gst.gov.in, or the Excel template inside it.' : w === 'notinzip' ? 'That zip does not hold the GSTR-2 Excel template. Download the Returns Offline Tool from gst.gov.in › Downloads › Offline Tools.' : w === 'notg2' || w === 'notxl' ? 'That file is not the GSTR-2 Excel Workbook Template (it comes inside the Returns Offline Tool from gst.gov.in).' : 'Could not fill the template: ' + (w || e));
+    });
+  }
+  /* ---------- IMS (Invoice Management System): actions suggested from the purchase bills ----------
+     The records come from the portal: the person downloads them on the IMS dashboard and loads them into the department's IMS
+     Offline Tool with its own button. NSBiz then reads that file and, for every supplier invoice, debit note and credit note still
+     at "No Action", suggests: Accepted when the same supplier and document number is in the purchase bills with the tax within
+     Re 1; Pending with a remark when the tax differs or the document is not in the bills. NSBiz never chooses Rejected: that is the
+     person's decision. Rows already decided, and rows where Pending is not allowed (the tool marks them), are left as they are. */
+  var IMS = [{ n: 'B2B', st: 'G', rem: 'N', np: 'X', kind: 'inv' }, { n: 'B2B-DN', st: 'G', rem: 'N', np: 'X', kind: 'dn' }, { n: 'B2B-CN', st: 'G', rem: 'S', np: 'AH', kind: 'cn' }];
+  function imsAct(book) {
+    if (IMS.some(function (x) { return book.sheets.indexOf(x.n) < 0; }) || book.sheets.indexOf('Home') < 0) return Promise.reject(new Error('notims'));
+    var mine = books(), idx = {}, R = { acc: 0, pend: 0, diff: 0, kept: 0, rows: 0 };
+    mine.forEach(function (b) { idx[b.gstin + '|' + b.kind + '|' + nkey(b.no)] = b; });
+    var val = function (S, ref) { var c = S.get(ref); return c ? String(c.v == null ? '' : c.v).trim() : ''; };
+    return IMS.reduce(function (p, x) {
+      return p.then(function () { return book.sheet(x.n); }).then(function (S) {
+        for (var r = 7; r < 20007; r++) {
+          var g = g15(val(S, 'A' + r)); if (!g) break;
+          R.rows++;
+          var cur = val(S, x.st + r); if (cur && !/^no action$/i.test(cur)) { R.kept++; continue; }
+          var no = val(S, 'C' + r), tax = ['J', 'K', 'L', 'M'].reduce(function (a, c) { return a + Math.abs(num(val(S, c + r))); }, 0);
+          var b = idx[g + '|' + x.kind + '|' + nkey(no)], noPend = /^y$/i.test(val(S, x.np + r));
+          if (b && Math.abs(Math.abs(tax) - Math.abs(tax2(b))) <= 1) { S.set(x.st + r, 'Accepted'); R.acc++; }
+          else if (noPend) { R.kept++; }
+          else {
+            S.set(x.st + r, 'Pending');
+            S.set(x.rem + r, b ? 'Tax in our bill ' + money(tax2(b), false) + ', here ' + money(tax, false) + ': check with the supplier' : 'Not in our purchase bills yet');
+            if (b) R.diff++; else R.pend++;
+          }
+        }
+      });
+    }, Promise.resolve()).then(function () { return R; });
+  }
+  function tax2(b) { return Math.abs(b.igst) + Math.abs(b.cgst) + Math.abs(b.sgst) + Math.abs(b.cess || 0); }
+  function imsUtil() {
+    if (!NS.xlFill) return;
+    NS.xlFill.pick('.xlsm').then(function (f) {
+      if (!f) return;
+      NS.toast('Reading ' + f.name + '…');
+      return NS.xlFill.open(f).then(function (book) { return imsAct(book).then(function (R) {
+        var me = SELLER() || {}, nm = f.name.replace(/\.xlsm$/i, '') + ' NSBiz.xlsm';
+        return book.save(nm).then(function (bl) { return NS.xlFill.toFolder(g15(me.gstin), 'IMS ' + NS.today().slice(0, 7), nm, bl); }).then(function (inF) {
+          NS.toast('Saved as "' + nm + '": ' + R.acc + ' accepted, ' + R.diff + ' with a different amount and ' + R.pend + ' not in your bills marked Pending, ' + R.kept + ' left as they were (of ' + R.rows + ').' + (inF ? ' Also saved in NSBiz › GST Returns.' : '') + ' Check each Pending one, change any you want to reject, then upload with the tool\'s own button.');
+        });
+      }); });
+    }).catch(function (e) {
+      var w = e && e.message;
+      NS.toast(w === 'notims' || w === 'nosheet' || w === 'notxl' ? 'Choose the IMS Offline Tool file (.xlsm) into which you loaded the records downloaded from the IMS dashboard.' : 'Could not read the file: ' + (w || e), 'bad');
+    });
+  }
   function setRange(p) {   /* 2B period MMYYYY -> that month */
     var m2 = String(p || '').match(/^(\d{2})(\d{4})$/);
     if (!m2) return;
@@ -279,6 +389,7 @@
     }).catch(function () { st.textContent = t('g2.bad'); });
   }
   function start() {
+    var rg = $('[data-do="reg"]'); if (rg && !$('[data-do="g2tpl"]')) rg.insertAdjacentHTML('afterend', ' <button type="button" class="btn" data-do="g2tpl" data-ic="xls" title="Fills the official GSTR-2 Excel template of the Returns Offline Tool (gst.gov.in) from your purchase bills of these dates and saves it as a new file">Fill the GSTR-2 template (Excel)</button> <button type="button" class="btn sm" data-do="g2own" data-noic title="Choose a newer Returns Offline Tool download from gst.gov.in">Change template file</button><span class="soft xl-tpl" data-tpl="gstr2"></span> <button type="button" class="btn" data-do="ims" data-ic="xls" title="Choose your IMS Offline Tool file after loading the records downloaded from the IMS dashboard: NSBiz suggests Accepted or Pending for each supplier document from your purchase bills">Suggest IMS actions (Excel)</button>'); showTpl();
     document.addEventListener('ns-lang', function () { $('#g2-status').textContent = t('g2.loaded', { n: DOCS.filter(function (d) { return d.type === 'pbill'; }).length }); draw(); });   /* the language pack can arrive after the first drawing */
     NSStore.ready().then(function () { return Promise.all([NSStore.list('doc'), NSStore.list('biz')]); }).then(function (x) {
       DOCS = x[0] || []; BIZ = x[1] || [];
@@ -301,6 +412,9 @@
       if (b.dataset.csv) csv(b.dataset.csv);
       else if (b.dataset.add2b && R) addBill(R.only2b[+b.dataset.add2b], b);
       else if (b.dataset.do === 'reg') register();
+      else if (b.dataset.do === 'g2tpl') fillG2Tpl(false);
+      else if (b.dataset.do === 'g2own') fillG2Tpl(true);
+      else if (b.dataset.do === 'ims') imsUtil();
       else if (b.dataset.do === 'print') window.print();
       else if (b.dataset.do === 'share' && R) NS.sharePdf([$('#g2-out')], 'GSTR-2B match ' + (TWOB.period || ''), 'a4', 'GSTR-2B match', 'GSTR-2B match');
     });
