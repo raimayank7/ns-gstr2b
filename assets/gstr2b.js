@@ -163,6 +163,7 @@
       list('diff', r.diff, PH.concat([t('g2.c.why')]), pair) + list('only2b', r.only2b, H, one, function (x, i) { return x.sec === 'impg' || x.sec === 'impgsez' || x.kind === 'dn' ? '' : '<button type="button" class="btn sm" data-add2b="' + i + '">' + esc(t('uf.add2b')) + '</button>'; }) + list('onlybooks', r.onlybooks, H, one) + list('nofile', r.nofile, [t('g2.c.sup'), 'GSTIN', t('g2.c.bills'), t('g2.c.tax')], function (s) { return [s.name, s.gstin, String(s.n), s.tax]; }) +
       list('numdiff', r.numdiff, PH, pair) + list('noitc', r.noitc, H.concat([t('g2.c.rsn')]), function (x) { return one(x).concat([x.rsn || '—']); }) + list('ok', r.ok, PH, pair);
     $('#g2-out').innerHTML = h;
+    var off = $('#g2-off'); if (off) off.innerHTML = official(r);
     $('#g2-files').hidden = false;
     keep(r);
   }
@@ -197,6 +198,41 @@
     btn.disabled = true;
     NSStore.put('doc', d).then(function (rec) { DOCS.push(rec); NS.toast(t('uf.add2bok', { no: x.no })); draw(); }, function (err) { btn.disabled = false; NS.toast(err.message, 'bad'); });
   }
+  /* the statement as Form GSTR-2B lays out its summary (rule 60(7) of the CGST Rules): ITC available (Part A), ITC reversal (Part B),
+     ITC not available, each with the GSTR-3B table it goes to; then the match with your purchase bills */
+  function official(r) {
+    var G = NS.gstForm; if (!G || !TWOB) return '';
+    var s = SELLER() || {}, L = TWOB.rows, R = function (a) { return { cells: a }; };
+    var sum = function (f) { var o = { igst: 0, cgst: 0, sgst: 0, cess: 0 }; L.filter(f).forEach(function (x) { o.igst = r2(o.igst + num(x.igst)); o.cgst = r2(o.cgst + num(x.cgst)); o.sgst = r2(o.sgst + num(x.sgst)); o.cess = r2(o.cess + num(x.cess)); }); return [o.igst, o.cgst, o.sgst, o.cess]; };
+    var imp = function (x) { return x.sec === 'impg' || x.sec === 'impgsez'; }, base = function (x) { return x.itc && !imp(x) && x.sec !== 'isd'; };
+    var per = String(TWOB.period || ''), pl = /^\d{6}$/.test(per) ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+per.slice(0, 2) - 1] + ' ' + per.slice(2) : per;
+    var y = /^\d{6}$/.test(per) ? +per.slice(2) : 0, mo = /^\d{6}$/.test(per) ? +per.slice(0, 2) : 4, fy = y ? (mo >= 4 ? y + '-' + String(y + 1).slice(2) : (y - 1) + '-' + String(y).slice(2)) : '';
+    var h = G.head('FORM GSTR-2B', '[See rule 60(7)]', 'Auto-drafted ITC Statement', [['Year', fy], ['Month', pl]], [
+      ['1.', 'GSTIN', TWOB.gstin || s.gstin || ''], ['2(a).', 'Legal name of the registered person', (s.gst && s.gst.legal) || s.legal || s.name || ''], ['2(b).', 'Trade name, if any', s.name || ''], ['2(c).', 'Date of generation', '']]);
+    var C = ['Heading', 'GSTR-3B table', 'Integrated Tax', 'Central Tax', 'State/UT Tax', 'Cess'];
+    h += G.table('Part A', 'ITC Available: summary', C, [
+      { sub: 'I. All other ITC: Supplies from registered persons' },
+      R(['B2B: Invoices', '4(A)(5)'].concat(sum(function (x) { return base(x) && !x.rev && x.kind === 'inv' && x.sec !== 'amend'; }))),
+      R(['B2B: Debit notes', '4(A)(5)'].concat(sum(function (x) { return base(x) && !x.rev && x.kind === 'dn' && x.sec !== 'amend'; }))),
+      R(['B2B: Invoices and debit notes (Amendment)', '4(A)(5)'].concat(sum(function (x) { return base(x) && !x.rev && x.kind !== 'cn' && x.sec === 'amend'; }))),
+      { sub: 'II. Inward Supplies from ISD' }, R(['ISD: Invoices', '4(A)(4)'].concat(sum(function (x) { return x.itc && x.sec === 'isd'; }))),
+      { sub: 'III. Inward Supplies liable for reverse charge' }, R(['B2B: Invoices and debit notes', '3.1(d), 4(A)(3)'].concat(sum(function (x) { return base(x) && x.rev && x.kind !== 'cn'; }))),
+      { sub: 'IV. Import of Goods' }, R(['IMPG: Import of goods from overseas and from SEZ', '4(A)(1)'].concat(sum(function (x) { return x.itc && imp(x); })))]);
+    h += G.table('Part B', 'ITC Reversal: summary', C, [{ sub: 'I. Others' },
+      R(['B2B: Credit notes', '4(B)(2)'].concat(sum(function (x) { return base(x) && !x.rev && x.kind === 'cn'; }))),
+      R(['B2B: Credit notes (Reverse charge)', '4(B)(2)'].concat(sum(function (x) { return base(x) && x.rev && x.kind === 'cn'; })))]);
+    h += G.table('', 'ITC Not Available: summary', C, [R(['Documents on which ITC is not available', '4(D)(2)'].concat(sum(function (x) { return !x.itc; })))]);
+    h += G.table('', 'Match with your purchase bills (books)', ['Result', 'Bills', 'Tax'], [
+      R(['Matched', String(r.ok.length), r.tok]), R(['Amount differs', String(r.diff.length), '']), R(['Bill number differs', String(r.numdiff.length), '']),
+      R(['In GSTR-2B, not in your books', String(r.only2b.length), '']), R(['In your books, not in GSTR-2B', String(r.onlybooks.length), '']), { cells: ['Tax as per GSTR-2B / as per books', '', m(r.t2b) + ' / ' + m(r.tbooks)], tot: 1 }]);
+    h += G.note('Summary worked out by NSBiz from the GSTR-2B file you opened (the portal generates the statement itself on the 14th). The details of each bill are under the working.');
+    return G.wrap(h);
+  }
+  (function offBox() {
+    var out = $('#g2-out'); if (!out || $('#g2-off')) return;
+    var d = document.createElement('section'); d.id = 'g2-off'; d.className = 'off-box'; d.setAttribute('aria-label', 'Form GSTR-2B');
+    if (NS.gstForm && NS.gstForm.inApp) { out.parentNode.insertBefore(d, out); NS.gstForm.fold(out, 'See every bill as the working'); } else out.parentNode.insertBefore(d, out.nextSibling);
+  })();
   function SELLER() { var bz = $('#g2-biz').value; return BIZ.filter(function (b) { return key(b.name) === bz; })[0] || (DOCS.filter(function (d) { return key(d.seller && d.seller.name) === bz; })[0] || {}).seller; }
   function save(blob, name) { var a = document.createElement('a'), u = URL.createObjectURL(blob); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(u); }, 4000); }
   function csvCell(v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
