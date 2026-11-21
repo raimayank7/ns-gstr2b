@@ -9,6 +9,7 @@
   var $ = NS.$, $$ = NS.$$, esc = NS.esc, num = NS.num, r2 = NS.r2, t = NS.t, money = NS.money, B = window.NSBooks;
   var root = $('#g2');
   if (!root) return;
+  var SHEETJS = ['/assets/vendor/xlsx-0.20.3.full.min.js', ''];   /* reads the portal's 2B Excel (ExcelJS 4.4.0 has unfixed 2026 flaws when reading files) */
   var XLSX_JS = ['https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js', 'sha384-Pqp51FUN2/qzfxZxBCtF0stpc9ONI6MYZpVqmo8m20SoaQCzf+arZvACkLkirlPz'];
   var MONF = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   function key(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
@@ -58,39 +59,39 @@
   var COLS = [['gstin', /gstin of (the )?supplier/i], ['name', /trade.*legal|legal.*name|trade name/i], ['no', /(invoice|note|document) (number|no)/i], ['ntype', /note type/i],
     ['date', /(invoice|note|document) date/i], ['value', /(invoice|note|document) value/i], ['txv', /taxable value/i], ['igst', /integrated/i], ['cgst', /central/i], ['sgst', /state/i], ['cess', /^cess/i],
     ['itc', /itc avail/i], ['rsn', /reason/i], ['rev', /reverse charge/i]];
-  function fromExcel(buf) {
-    return NS.loadJs(XLSX_JS[0], XLSX_JS[1]).then(function () {
-      var wb = new window.ExcelJS.Workbook();
-      return wb.xlsx.load(buf).then(function () {
-        var out = { gstin: '', period: '', rows: [] };
-        wb.eachSheet(function (ws) {
-          var name = ws.name.toUpperCase().replace(/\s/g, '');
-          var sec = /^B2B$/.test(name) ? 'inv' : /^B2B-CDNR$|^CDNR$/.test(name) ? 'note' : /^B2BA$|CDNRA/.test(name) ? 'amend' : '';
-          if (!out.gstin) ws.eachRow(function (r, n) { if (n < 12) r.eachCell(function (c) { var m = String(c.value || '').match(/\b\d{2}[A-Z]{5}\d{4}[A-Z][A-Z0-9]Z[A-Z0-9]\b/); if (m && !out.gstin) out.gstin = m[0]; }); });
-          if (!sec) return;
-          var hr = 0, map = {};
-          for (var i = 1; i <= Math.min(12, ws.rowCount) && !hr; i++) ws.getRow(i).eachCell(function (c) { if (/gstin of (the )?supplier/i.test(String(c.value || ''))) hr = i; });
-          if (!hr) return;
-          [hr, hr + 1].forEach(function (rn) {
-            ws.getRow(rn).eachCell({ includeEmpty: false }, function (c, col) {
-              var txt = String(c.value && c.value.richText ? c.value.richText.map(function (x) { return x.text; }).join('') : c.value || '').replace(/\s+/g, ' ');
-              COLS.forEach(function (k) { if (map[k[0]] == null && k[1].test(txt)) map[k[0]] = col; });
-            });
-          });
-          if (map.gstin == null || map.no == null) return;
-          ws.eachRow(function (r, n) {
-            if (n <= hr + 1) return;
-            var v = function (k) { var c = map[k] != null ? r.getCell(map[k]).value : ''; return c && c.result != null ? c.result : c; };
-            var g = g15(v('gstin'));
-            if (!/^\d{2}[A-Z0-9]{13}$/.test(g)) return;
-            var nt = String(v('ntype') || '').toLowerCase();
-            out.rows.push({ gstin: g, name: String(v('name') || ''), kind: sec === 'note' || nt ? (/debit/.test(nt) ? 'dn' : 'cn') : 'inv', no: String(v('no') || ''), date: iso(v('date')), value: num(v('value')),
-              txv: num(v('txv')), igst: num(v('igst')), cgst: num(v('cgst')), sgst: num(v('sgst')), cess: num(v('cess')), itc: !/^n/i.test(String(v('itc') || 'Yes')), rsn: String(v('rsn') || ''),
-              rev: /^y/i.test(String(v('rev') || 'No')), filed: '', sprd: '', sec: sec === 'amend' ? 'amend' : '' });
-          });
-        });
-        return out;
+  /* an Excel date number (days since 30 Dec 1899) as yyyy-mm-dd, worked out in UTC so no time zone moves the day */
+  function xlDate(v) { return typeof v === 'number' && v > 20000 && v < 80000 ? new Date(Date.UTC(1899, 11, 30) + Math.round(v) * 86400000).toISOString().slice(0, 10) : v; }
+  function fromSheets(sheets) {   /* sheets: [{ name, rows: [[cell, ...], ...] }] (rows from row 1, cells from column 1) */
+    var out = { gstin: '', period: '', rows: [] };
+    sheets.forEach(function (sh) {
+      var name = String(sh.name).toUpperCase().replace(/\s/g, ''), rows = sh.rows, txt = function (c) { return String(c == null ? '' : c).replace(/\s+/g, ' '); };
+      var sec = /^B2B$/.test(name) ? 'inv' : /^B2B-CDNR$|^CDNR$/.test(name) ? 'note' : /^B2BA$|CDNRA/.test(name) ? 'amend' : '';
+      if (!out.gstin) rows.slice(0, 11).forEach(function (r) { (r || []).forEach(function (c) { var m = String(c || '').match(/\b\d{2}[A-Z]{5}\d{4}[A-Z][A-Z0-9]Z[A-Z0-9]\b/); if (m && !out.gstin) out.gstin = m[0]; }); });
+      if (!sec) return;
+      var hr = -1, map = {};
+      for (var i = 0; i < Math.min(12, rows.length) && hr < 0; i++) if ((rows[i] || []).some(function (c) { return /gstin of (the )?supplier/i.test(txt(c)); })) hr = i;
+      if (hr < 0) return;
+      [hr, hr + 1].forEach(function (rn) {
+        (rows[rn] || []).forEach(function (c, col) { if (c === '' || c == null) return; COLS.forEach(function (k) { if (map[k[0]] == null && k[1].test(txt(c))) map[k[0]] = col; }); });
       });
+      if (map.gstin == null || map.no == null) return;
+      rows.slice(hr + 2).forEach(function (r) {
+        r = r || [];
+        var v = function (k) { var c = map[k] != null ? r[map[k]] : ''; return c == null ? '' : c; };
+        var g = g15(v('gstin'));
+        if (!/^\d{2}[A-Z0-9]{13}$/.test(g)) return;
+        var nt = String(v('ntype') || '').toLowerCase();
+        out.rows.push({ gstin: g, name: String(v('name') || ''), kind: sec === 'note' || nt ? (/debit/.test(nt) ? 'dn' : 'cn') : 'inv', no: String(v('no') || ''), date: iso(xlDate(v('date'))), value: num(v('value')),
+          txv: num(v('txv')), igst: num(v('igst')), cgst: num(v('cgst')), sgst: num(v('sgst')), cess: num(v('cess')), itc: !/^n/i.test(String(v('itc') || 'Yes')), rsn: String(v('rsn') || ''),
+          rev: /^y/i.test(String(v('rev') || 'No')), filed: '', sprd: '', sec: sec === 'amend' ? 'amend' : '' });
+      });
+    });
+    return out;
+  }
+  function fromExcel(buf) {
+    return NS.loadJs(SHEETJS[0], SHEETJS[1]).then(function () {
+      var X = window.XLSX, wb = X.read(new Uint8Array(buf), { type: 'array' });
+      return fromSheets(wb.SheetNames.map(function (n) { return { name: n, rows: X.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: '' }) }; }));
     });
   }
 
